@@ -57,12 +57,17 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
 )
 
+add_library(display-hal-interface INTERFACE)
+target_link_libraries(display-hal-interface INTERFACE stm32cubemx)
+add_subdirectory(Lib/display-hal)
+
 # Remove wrong libob.a library dependency when using cpp files
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
+    display-hal-lib
 
     # Add user defined libraries
 )
