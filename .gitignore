@@ -1,0 +1,9 @@
+Debug/
+Release/
+build/
+
+.cproject
+.mxproject
+.project
+*.launch
+compile_commands.json
