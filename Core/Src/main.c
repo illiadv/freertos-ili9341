@@ -57,7 +57,7 @@ osThreadId_t statsTaskHandle;
 const osThreadAttr_t statsTask_attributes = {
   .name = "statsTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for renderTask */
 osThreadId_t renderTaskHandle;
@@ -65,6 +65,18 @@ const osThreadAttr_t renderTask_attributes = {
   .name = "renderTask",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for inputTask */
+osThreadId_t inputTaskHandle;
+const osThreadAttr_t inputTask_attributes = {
+  .name = "inputTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
+/* Definitions for inputQueue */
+osMessageQueueId_t inputQueueHandle;
+const osMessageQueueAttr_t inputQueue_attributes = {
+  .name = "inputQueue"
 };
 /* Definitions for displayMutex */
 osMutexId_t displayMutexHandle;
@@ -85,6 +97,7 @@ static void MX_SPI1_Init(void);
 static void MX_USART2_UART_Init(void);
 void StartStatsTask(void *argument);
 void StartRenderTask(void *argument);
+void StartInputTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -169,6 +182,10 @@ int main(void)
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
+  /* Create the queue(s) */
+  /* creation of inputQueue */
+  inputQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &inputQueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -179,6 +196,9 @@ int main(void)
 
   /* creation of renderTask */
   renderTaskHandle = osThreadNew(StartRenderTask, NULL, &renderTask_attributes);
+
+  /* creation of inputTask */
+  inputTaskHandle = osThreadNew(StartInputTask, NULL, &inputTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -600,6 +620,24 @@ void StartRenderTask(void *argument)
     osDelay(30);
   }
   /* USER CODE END StartRenderTask */
+}
+
+/* USER CODE BEGIN Header_StartInputTask */
+/**
+* @brief Function implementing the inputTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartInputTask */
+void StartInputTask(void *argument)
+{
+  /* USER CODE BEGIN StartInputTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartInputTask */
 }
 
 /**
