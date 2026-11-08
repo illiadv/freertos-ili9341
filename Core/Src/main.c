@@ -84,6 +84,12 @@ const osMutexAttr_t displayMutex_attributes = {
   .name = "displayMutex"
 };
 /* USER CODE BEGIN PV */
+
+typedef struct {
+    uint32_t x;
+    uint32_t y;
+} joystick_input_t;
+
 dh_display_driver_t driver;
 /* USER CODE END PV */
 
@@ -184,7 +190,7 @@ int main(void)
 
   /* Create the queue(s) */
   /* creation of inputQueue */
-  inputQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &inputQueue_attributes);
+  inputQueueHandle = osMessageQueueNew (16, sizeof(joystick_input_t), &inputQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
