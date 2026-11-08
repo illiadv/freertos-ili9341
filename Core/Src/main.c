@@ -86,8 +86,8 @@ const osMutexAttr_t displayMutex_attributes = {
 /* USER CODE BEGIN PV */
 
 typedef struct {
-    uint32_t x;
-    uint32_t y;
+    int16_t x;
+    int16_t y;
 } joystick_input_t;
 
 dh_display_driver_t driver;
@@ -593,7 +593,6 @@ void StartStatsTask(void *argument)
 */
 int ballX = 120;
 int ballY = 160;
-int ballSpeed = 3;
 const int ballRadius = 8;
 /* USER CODE END Header_StartRenderTask */
 void StartRenderTask(void *argument)
@@ -605,23 +604,24 @@ void StartRenderTask(void *argument)
   {
     if (osMessageQueueGet(inputQueueHandle, &input, 0, osWaitForever) == osOK)
     {
-	printf("x:%lu, y:%lu\r\n", input.x, input.y);
+	printf("x:%d, y:%d\r\n", input.x, input.y);
+
 
 	osMutexAcquire(displayMutexHandle, osWaitForever);
 	dh_fill_circle(&driver, DH_BLACK, ballX, ballY, ballRadius);
 	osMutexRelease(displayMutexHandle);
 
-	ballX += ballSpeed;
+	ballX = 120 + input.x;
+	ballY = 160 + input.y;
+
 	if (ballX + ballRadius >= 240)
 	{
 	    ballX = 240 - ballRadius - 1;
-	    ballSpeed = -ballSpeed;
 	}
 
 	if (ballX - ballRadius < 0)
 	{
 	    ballX = ballRadius;
-	    ballSpeed = -ballSpeed;
 	}
 
 	osMutexAcquire(displayMutexHandle, osWaitForever);
@@ -643,18 +643,25 @@ void StartInputTask(void *argument)
 {
   /* USER CODE BEGIN StartInputTask */
   /* Infinite loop */
+    joystick_input_t input;
   for(;;)
   {
-    joystick_input_t input;
     HAL_ADC_Start(&hadc3);
     HAL_ADC_PollForConversion(&hadc3, 10);
     input.x = HAL_ADC_GetValue(&hadc3);
     HAL_ADC_Stop(&hadc3);
 
+    input.x -= 2048;
+    input.x >>= 5;
+
     HAL_ADC_Start(&hadc4);
     HAL_ADC_PollForConversion(&hadc4, 10);
     input.y = HAL_ADC_GetValue(&hadc4);
     HAL_ADC_Stop(&hadc4);
+
+    input.y -= 2048;
+    input.y >>= 5;
+
     osMessageQueuePut(inputQueueHandle, &input, 0, 0);
     osDelay(30);
   }
