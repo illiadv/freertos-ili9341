@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
+#include <math.h>
 #include "display_hal/display_hal.h"
 #include "display_hal/ili9341spi_driver.h"
 
@@ -35,6 +36,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define ANALOG_DEADZONE 512
 
 /* USER CODE END PD */
 
@@ -106,6 +108,7 @@ void StartRenderTask(void *argument);
 void StartInputTask(void *argument);
 
 /* USER CODE BEGIN PFP */
+void ProcessJoystick(int16_t rawX, int16_t rawY, joystick_input_t *out);
 
 /* USER CODE END PFP */
 
@@ -115,6 +118,28 @@ int __io_putchar(int ch)
 {
     HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
     return ch;
+}
+
+void ProcessJoystick(int16_t rawX, int16_t rawY, joystick_input_t *out)
+{
+    rawX = rawX - 2048;
+    rawY = rawY - 2048;
+
+    int32_t radiusSq = rawX * rawX + rawY * rawY;
+    int32_t deadzoneSq = ANALOG_DEADZONE * ANALOG_DEADZONE;
+
+    if (radiusSq < deadzoneSq)
+    {
+	out->x = 0;
+	out->y = 0;
+	return;
+    }
+
+    float radius = sqrtf(radiusSq);
+    float scale = (radius - ANALOG_DEADZONE) / (2048 - ANALOG_DEADZONE);
+    
+    out->x = (int16_t)((float)rawX / radius * scale * 64.0f);
+    out->y = (int16_t)((float)rawY / radius * scale * 64.0f);
 }
 
 /* USER CODE END 0 */
@@ -644,25 +669,30 @@ void StartInputTask(void *argument)
   /* USER CODE BEGIN StartInputTask */
   /* Infinite loop */
     joystick_input_t input;
+    joystick_input_t inputOld;
   for(;;)
   {
     HAL_ADC_Start(&hadc3);
     HAL_ADC_PollForConversion(&hadc3, 10);
-    input.x = HAL_ADC_GetValue(&hadc3);
+    int16_t rawX = HAL_ADC_GetValue(&hadc3);
     HAL_ADC_Stop(&hadc3);
-
-    input.x -= 2048;
-    input.x >>= 5;
 
     HAL_ADC_Start(&hadc4);
     HAL_ADC_PollForConversion(&hadc4, 10);
-    input.y = HAL_ADC_GetValue(&hadc4);
+    int16_t rawY = HAL_ADC_GetValue(&hadc4);
     HAL_ADC_Stop(&hadc4);
 
-    input.y -= 2048;
-    input.y >>= 5;
+    ProcessJoystick(rawX, rawY, &input);
 
-    osMessageQueuePut(inputQueueHandle, &input, 0, 0);
+    int16_t dX = input.x - inputOld.x;
+    int16_t dY = input.y - inputOld.y;
+
+    if (dX != 0 || dY != 0)
+    {
+      osMessageQueuePut(inputQueueHandle, &input, 0, 0);
+      inputOld = input;
+    }
+
     osDelay(30);
   }
   /* USER CODE END StartInputTask */
