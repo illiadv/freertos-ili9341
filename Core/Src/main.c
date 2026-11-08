@@ -72,7 +72,7 @@ const osMutexAttr_t displayMutex_attributes = {
   .name = "displayMutex"
 };
 /* USER CODE BEGIN PV */
-
+dh_display_driver_t driver;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -140,15 +140,12 @@ int main(void)
 
   printf("UART initialized\r\n");
 
-  dh_display_driver_t driver;
   dh_ili9341spi_display_init(&driver,
       &hspi1,
       GPIOA, GPIO_PIN_9,
       GPIOB, GPIO_PIN_6,
       GPIOC, GPIO_PIN_7
   );
-
-  // HAL_Delay(200);
 
   dh_fill_screen(&driver, DH_BLACK);
 
@@ -542,10 +539,21 @@ void StartStatsTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
+  char str[16];
+  text_attr_t attr = {
+      .bg_color = DH_BLACK,
+      .fg_color = DH_WHITE,
+      .font = &dh_font_7x10,
+      .origin_x = 1,
+      .origin_y = 1
+  };
+
   for(;;)
   {
-    // printf("Time: %lu\r\n", HAL_GetTick());
-    printf("statstask\r\n");
+    snprintf(str, 16, "Time: %lu", HAL_GetTick() / 1000);
+    osMutexAcquire(displayMutexHandle, osWaitForever);
+    dh_draw_string(&driver, attr, str);
+    osMutexRelease(displayMutexHandle);
     osDelay(1000);
   }
   /* USER CODE END 5 */
@@ -557,6 +565,10 @@ void StartStatsTask(void *argument)
 * @param argument: Not used
 * @retval None
 */
+int ballX = 120;
+int ballY = 160;
+int ballSpeed = 3;
+const int ballRadius = 8;
 /* USER CODE END Header_StartRenderTask */
 void StartRenderTask(void *argument)
 {
@@ -564,7 +576,28 @@ void StartRenderTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    osMutexAcquire(displayMutexHandle, osWaitForever);
+    dh_fill_circle(&driver, DH_BLACK, ballX, ballY, ballRadius);
+    osMutexRelease(displayMutexHandle);
+
+    ballX += ballSpeed;
+    if (ballX + ballRadius >= 240)
+    {
+	ballX = 240 - ballRadius - 1;
+	ballSpeed = -ballSpeed;
+    }
+
+    if (ballX - ballRadius < 0)
+    {
+	ballX = ballRadius;
+	ballSpeed = -ballSpeed;
+    }
+
+    osMutexAcquire(displayMutexHandle, osWaitForever);
+    dh_fill_circle(&driver, DH_RED, ballX, ballY, ballRadius);
+    osMutexRelease(displayMutexHandle);
+
+    osDelay(30);
   }
   /* USER CODE END StartRenderTask */
 }
