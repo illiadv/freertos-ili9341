@@ -327,7 +327,7 @@ static void MX_ADC3_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
@@ -600,30 +600,34 @@ void StartRenderTask(void *argument)
 {
   /* USER CODE BEGIN StartRenderTask */
   /* Infinite loop */
+  joystick_input_t input;
   for(;;)
   {
-    osMutexAcquire(displayMutexHandle, osWaitForever);
-    dh_fill_circle(&driver, DH_BLACK, ballX, ballY, ballRadius);
-    osMutexRelease(displayMutexHandle);
-
-    ballX += ballSpeed;
-    if (ballX + ballRadius >= 240)
+    if (osMessageQueueGet(inputQueueHandle, &input, 0, osWaitForever) == osOK)
     {
-	ballX = 240 - ballRadius - 1;
-	ballSpeed = -ballSpeed;
+	printf("x:%lu, y:%lu\r\n", input.x, input.y);
+
+	osMutexAcquire(displayMutexHandle, osWaitForever);
+	dh_fill_circle(&driver, DH_BLACK, ballX, ballY, ballRadius);
+	osMutexRelease(displayMutexHandle);
+
+	ballX += ballSpeed;
+	if (ballX + ballRadius >= 240)
+	{
+	    ballX = 240 - ballRadius - 1;
+	    ballSpeed = -ballSpeed;
+	}
+
+	if (ballX - ballRadius < 0)
+	{
+	    ballX = ballRadius;
+	    ballSpeed = -ballSpeed;
+	}
+
+	osMutexAcquire(displayMutexHandle, osWaitForever);
+	dh_fill_circle(&driver, DH_RED, ballX, ballY, ballRadius);
+	osMutexRelease(displayMutexHandle);
     }
-
-    if (ballX - ballRadius < 0)
-    {
-	ballX = ballRadius;
-	ballSpeed = -ballSpeed;
-    }
-
-    osMutexAcquire(displayMutexHandle, osWaitForever);
-    dh_fill_circle(&driver, DH_RED, ballX, ballY, ballRadius);
-    osMutexRelease(displayMutexHandle);
-
-    osDelay(30);
   }
   /* USER CODE END StartRenderTask */
 }
@@ -641,7 +645,18 @@ void StartInputTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    joystick_input_t input;
+    HAL_ADC_Start(&hadc3);
+    HAL_ADC_PollForConversion(&hadc3, 10);
+    input.x = HAL_ADC_GetValue(&hadc3);
+    HAL_ADC_Stop(&hadc3);
+
+    HAL_ADC_Start(&hadc4);
+    HAL_ADC_PollForConversion(&hadc4, 10);
+    input.y = HAL_ADC_GetValue(&hadc4);
+    HAL_ADC_Stop(&hadc4);
+    osMessageQueuePut(inputQueueHandle, &input, 0, 0);
+    osDelay(30);
   }
   /* USER CODE END StartInputTask */
 }
