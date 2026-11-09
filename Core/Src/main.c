@@ -26,6 +26,7 @@
 #include <math.h>
 #include "display_hal/display_hal.h"
 #include "display_hal/ili9341spi_driver.h"
+#include "FreeRTOS.h"
 
 /* USER CODE END Includes */
 
@@ -181,8 +182,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
     HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 2, 0);
-
-  printf("UART initialized\r\n");
 
   dh_ili9341spi_display_init(&driver,
       &hspi1,
@@ -590,7 +589,7 @@ void StartStatsTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
-  char str[16];
+  char str[32];
   text_attr_t attr = {
       .bg_color = DH_BLACK,
       .fg_color = DH_WHITE,
@@ -601,7 +600,9 @@ void StartStatsTask(void *argument)
 
   for(;;)
   {
-    snprintf(str, 16, "Time: %lu", HAL_GetTick() / 1000);
+    size_t heapFree = xPortGetFreeHeapSize();
+    size_t heapMinFree = xPortGetMinimumEverFreeHeapSize();
+    snprintf(str, 32, "Heap: %uB free (min: %uB)", heapFree, heapMinFree);
     osMutexAcquire(displayMutexHandle, osWaitForever);
     dh_draw_string(&driver, attr, str);
     osMutexRelease(displayMutexHandle);
@@ -629,7 +630,7 @@ void StartRenderTask(void *argument)
   {
     if (osMessageQueueGet(inputQueueHandle, &input, 0, osWaitForever) == osOK)
     {
-	printf("x:%d, y:%d\r\n", input.x, input.y);
+	// printf("x:%d, y:%d\r\n", input.x, input.y);
 
 
 	osMutexAcquire(displayMutexHandle, osWaitForever);
